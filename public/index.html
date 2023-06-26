@@ -1,16 +1,141 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Excel Data Visualization</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
+	<head>
+		<meta charset="UTF-8" />
+		<title>Excel Data Visualization</title>
+		<style>
+			body {
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				height: 100vh;
+				background-color: #f0f0f0;
+			}
 
-<input type="file" id="fileInput">
-<canvas id="myChart" width="400" height="200"></canvas>
+			.container {
+				text-align: center;
+			}
 
-<script src="./main.js"></script>
+			#progressBarContainer {
+				width: 100%;
+				height: 20px;
+				background-color: #ccc;
+				margin-top: 20px; /* Add some margin */
+			}
 
-</body>
+			#progressBar {
+				height: 100%;
+				background-color: #4caf50;
+			}
+
+			.upload-btn-wrapper {
+				position: relative;
+				overflow: hidden;
+				display: inline-block;
+			}
+
+			.btn {
+				border: 2px solid gray;
+				color: gray;
+				background-color: white;
+				padding: 8px 20px;
+				border-radius: 8px;
+				font-size: 16px;
+				font-weight: bold;
+			}
+
+			.upload-btn-wrapper input[type="file"] {
+				font-size: 100px;
+				position: absolute;
+				left: 0;
+				top: 0;
+				opacity: 0;
+			}
+
+			#imageContainer {
+				display: flex;
+				justify-content: center;
+				flex-wrap: wrap;
+				margin-top: 20px;
+			}
+
+			.zoomable-image {
+				cursor: zoom-in;
+				max-width: 300px;
+				height: auto;
+				margin: 10px;
+				border: 1px solid #ccc;
+			}
+
+			.zoomable-image:hover {
+				opacity: 0.8;
+			}
+
+			.zoomable-image:active,
+			.zoomable-image:focus {
+				outline: none;
+			}
+
+			.zoomable-image.zoomed {
+				cursor: zoom-out;
+			}
+		</style>
+		<style>
+			@keyframes blink {
+				0% {
+					opacity: 1;
+				}
+				50% {
+					opacity: 0;
+				}
+				100% {
+					opacity: 1;
+				}
+			}
+
+			#statusContainer {
+				display: none;
+				align-items: center;
+				justify-content: center;
+				margin-bottom: 20px;
+			}
+
+			#statusText {
+				font-size: 16px;
+			}
+
+			#statusText {
+				margin-left: 5px;
+				animation: blink 1s infinite;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<div class="upload-btn-wrapper" id="uploadBtnWrapper">
+				<button class="btn">上传一个文件</button>
+				<input type="file" id="fileInput" />
+			</div>
+			<div id="progressBarContainer" style="display: none">
+				<div id="progressBar"></div>
+			</div>
+
+			<div id="statusContainer">
+				<span id="statusText">结果正在生成中，请稍后.....</span>
+				<span id="statusColon"></span>
+			</div>
+
+			<div id="imageContainer"></div>
+		</div>
+		<script src="./medium-zoom.min.js"></script>
+		<script src="./main.js"></script>
+		<script>
+			document.addEventListener("DOMContentLoaded", function () {
+				const zoomableImages = document.querySelectorAll(".zoomable-image");
+				mediumZoom(zoomableImages, {
+					margin: 24,
+				});
+			});
+		</script>
+	</body>
 </html>
