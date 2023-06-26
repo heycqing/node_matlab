@@ -1,5 +1,6 @@
 ## 使用说明
 
+github地址： https://github.com/heycqing/node_matlab 
 ### 前题条件
 1. 本地安装nodeJS，版本为10.16.0或以上
 2. 建议下载vscode, 并且vscode打开文件夹
