@@ -2,6 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const { spawn } = require("child_process");
 const path = require("path");
+const fs =require("fs")
 
 const app = express();
 
@@ -22,6 +23,24 @@ app.use(express.static(__dirname));
 
 app.post("/upload", upload.single("excelFile"), (req, res) => {
     console.log("Received request");
+
+    // 图片路径
+    const imagePaths = [
+        "bp_comparison.png",
+        "bp_error.png",
+        "error_results.png"
+    ];
+
+    // 删除旧的图片文件
+    imagePaths.forEach((imagePath) => {
+        fs.unlink(path.join(__dirname, imagePath), (err) => {
+            if (err && err.code !== 'ENOENT') {
+                console.error(`Error while deleting old image ${imagePath}:`, err);
+            } else {
+                console.log(`Successfully deleted old image ${imagePath}`);
+            }
+        });
+    });
 
     const filePath = path.resolve(req.file.path); // 使用 path.resolve 获取文件的绝对路径
 
@@ -57,17 +76,23 @@ app.post("/upload", upload.single("excelFile"), (req, res) => {
 });
 
 app.get("/matlab-output", (req, res) => {
-    const imagePaths = [
-        "bp_comparison.png",
-        "bp_error.png",
-        "error_results.png"
-    ];
+    fs.readdir(__dirname, (err, files) => {
+        if (err) {
+            console.error(`Error reading directory: ${err}`);
+            res.status(500).send("An error occurred while reading the directory.");
+            return;
+        }
 
-    const imageTags = imagePaths
-        .map((imagePath) => `<img src="${imagePath}" class="zoomable-image" />`)
-        .join("");
+        // 筛选出 .png 文件
+        const imagePaths = files.filter(file => path.extname(file).toLowerCase() === '.png');
 
-    res.send(imageTags);
+        // 生成 HTML 图像标签
+        const imageTags = imagePaths
+            .map(imagePath => `<img src="${imagePath}" class="zoomable-image" />`)
+            .join("");
+
+        res.send(imageTags);
+    });
 });
 
 app.listen(3000, () => {
