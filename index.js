@@ -2,18 +2,21 @@ const express = require("express");
 const multer = require("multer");
 const { spawn } = require("child_process");
 const path = require("path");
-const fs =require("fs")
+const fs = require("fs");
 
 const app = express();
 
 // 配置 multer 的 storage 选项
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, "uploads/");
-    },
-    filename: (req, file, cb) => {
-        cb(null, `${file.fieldname}_${Date.now()}${path.extname(file.originalname)}`);
-    },
+	destination: (req, file, cb) => {
+		cb(null, "uploads/");
+	},
+	filename: (req, file, cb) => {
+		cb(
+			null,
+			`${file.fieldname}_${Date.now()}${path.extname(file.originalname)}`
+		);
+	},
 });
 
 const upload = multer({ storage });
@@ -21,80 +24,127 @@ const upload = multer({ storage });
 app.use(express.static("public"));
 app.use(express.static(__dirname));
 
-app.post("/upload", upload.single("excelFile"), (req, res) => {
-    console.log("Received request");
+app.post("/upload", upload.single("excelFile"), async (req, res) => {
+	console.log("Received request");
 
-    // 图片路径
-    const imagePaths = [
-        "bp_comparison.png",
-        "bp_error.png",
-        "error_results.png"
-    ];
+	// 图片路径
+	fs.readdir(__dirname, (err, files) => {
+		if (err) {
+			console.error(`Error reading directory: ${err}`);
+			return;
+		}
 
-    // 删除旧的图片文件
-    imagePaths.forEach((imagePath) => {
-        fs.unlink(path.join(__dirname, imagePath), (err) => {
-            if (err && err.code !== 'ENOENT') {
-                console.error(`Error while deleting old image ${imagePath}:`, err);
-            } else {
-                console.log(`Successfully deleted old image ${imagePath}`);
-            }
-        });
-    });
+		// 筛选出 .png 文件
+		const imagePaths = files.filter(
+			(file) => path.extname(file).toLowerCase() === ".png"
+		);
 
-    const filePath = path.resolve(req.file.path); // 使用 path.resolve 获取文件的绝对路径
+		// 删除所有的 .png 文件
+		imagePaths.forEach((imagePath) => {
+			fs.unlink(path.join(__dirname, imagePath), (err) => {
+				if (err && err.code !== "ENOENT") {
+					console.error(`Error while deleting old image ${imagePath}:`, err);
+				} else {
+					console.log(`Successfully deleted old image ${imagePath}`);
+				}
+			});
+		});
+	});
 
-    const data_file_path1 = filePath;
-    const sheet_name1 = "Sheet1";
-    const range1 = "A2:Q9999";
+	try {
+		const files = await readdir("uploads/");
 
-    const data_file_path2 = filePath;
-    const sheet_name2 = "Sheet2";
-    const range2 = "A2:P9999";
+		// 筛选出 .xlsx 文件并获取每个文件的 stat 对象
+		const xlsxFiles = await Promise.all(
+			files
+				.filter((file) => path.extname(file).toLowerCase() === ".xlsx")
+				.map(async (file) => {
+					const filePath = path.join("uploads/", file);
+					const stats = await stat(filePath);
+					return { file: filePath, mtime: stats.mtime };
+				})
+		);
 
-    const cmd = `matlab -nodisplay -nosplash -r "total('${data_file_path1}', '${sheet_name1}', '${range1}', '${data_file_path2}', '${sheet_name2}', '${range2}'); exit;"`;
+		// 如果文件数量超过 15，按照修改时间排序并删除最旧的文件
+		if (xlsxFiles.length > 6) {
+			xlsxFiles
+				.sort((a, b) => a.mtime.getTime() - b.mtime.getTime())
+				.slice(0, xlsxFiles.length - 6)
+				.forEach(async (fileStat) => {
+					try {
+						await unlink(fileStat.file);
+						console.log(`Successfully deleted old file ${fileStat.file}`);
+					} catch (err) {
+						console.error(
+							`Error while deleting old file ${fileStat.file}:`,
+							err
+						);
+					}
+				});
+		}
+	} catch (err) {
+		console.error(
+			`Error while reading directory or deleting old files: ${err}`
+		);
+	}
 
-    const process = spawn(cmd, { shell: true });
+	const filePath = path.resolve(req.file.path); // 使用 path.resolve 获取文件的绝对路径
 
-    process.stdout.on('data', (data) => {
-        console.log(`stdout: ${data}`);
-    });
+	const data_file_path1 = filePath;
+	const sheet_name1 = "Sheet1";
+	const range1 = "A2:Q9999";
 
-    process.stderr.on('data', (data) => {
-        console.error(`stderr: ${data}`);
-    });
+	const data_file_path2 = filePath;
+	const sheet_name2 = "Sheet2";
+	const range2 = "A2:P9999";
 
-    process.on('close', (code) => {
-        console.log(`子进程退出，退出码 ${code}`);
-        if(code !== 0) {
-            // 如果子进程非正常退出，返回一个错误状态码和简单的错误信息
-            return res.status(500).send("An error occurred during MATLAB processing.");
-        }
-        // 如果子进程正常退出，返回一个成功状态码和消息
-        return res.status(200).send("MATLAB processing completed successfully.");
-    });
+	const cmd = `matlab -nodisplay -nosplash -r "total('${data_file_path1}', '${sheet_name1}', '${range1}', '${data_file_path2}', '${sheet_name2}', '${range2}'); exit;"`;
+
+	const process = spawn(cmd, { shell: true });
+
+	process.stdout.on("data", (data) => {
+		console.log(`stdout: ${data}`);
+	});
+
+	process.stderr.on("data", (data) => {
+		console.error(`stderr: ${data}`);
+	});
+
+	process.on("close", (code) => {
+		console.log(`子进程退出，退出码 ${code}`);
+		if (code !== 0) {
+			// 如果子进程非正常退出，返回一个错误状态码和简单的错误信息
+			return res
+				.status(500)
+				.send("An error occurred during MATLAB processing.");
+		}
+		// 如果子进程正常退出，返回一个成功状态码和消息
+		return res.status(200).send("MATLAB processing completed successfully.");
+	});
 });
 
 app.get("/matlab-output", (req, res) => {
-    fs.readdir(__dirname, (err, files) => {
-        if (err) {
-            console.error(`Error reading directory: ${err}`);
-            res.status(500).send("An error occurred while reading the directory.");
-            return;
-        }
+	fs.readdir(__dirname, (err, files) => {
+		if (err) {
+			console.error(`Error reading directory: ${err}`);
+			res.status(500).send("An error occurred while reading the directory.");
+			return;
+		}
 
-        // 筛选出 .png 文件
-        const imagePaths = files.filter(file => path.extname(file).toLowerCase() === '.png');
+		// 筛选出 .png 文件
+		const imagePaths = files.filter(
+			(file) => path.extname(file).toLowerCase() === ".png"
+		);
 
-        // 生成 HTML 图像标签
-        const imageTags = imagePaths
-            .map(imagePath => `<img src="${imagePath}" class="zoomable-image" />`)
-            .join("");
+		// 生成 HTML 图像标签
+		const imageTags = imagePaths
+			.map((imagePath) => `<img src="${imagePath}" class="zoomable-image" />`)
+			.join("");
 
-        res.send(imageTags);
-    });
+		res.send(imageTags);
+	});
 });
 
 app.listen(3000, () => {
-    console.log("Server running on http://localhost:3000");
+	console.log("Server running on http://localhost:3000");
 });
