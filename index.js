@@ -2,7 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const { spawn } = require("child_process");
 const path = require("path");
-const fs = require("fs");
+const fs = require("fs").promises;
 
 const app = express();
 
@@ -28,51 +28,43 @@ app.post("/upload", upload.single("excelFile"), async (req, res) => {
 	console.log("Received request");
 
 	// 图片路径
-	fs.readdir(__dirname, (err, files) => {
-		if (err) {
-			console.error(`Error reading directory: ${err}`);
-			return;
-		}
-
+	try {
+		const files = await fs.readdir(__dirname);
 		// 筛选出 .png 文件
 		const imagePaths = files.filter(
 			(file) => path.extname(file).toLowerCase() === ".png"
 		);
 
 		// 删除所有的 .png 文件
-		imagePaths.forEach((imagePath) => {
-			fs.unlink(path.join(__dirname, imagePath), (err) => {
-				if (err && err.code !== "ENOENT") {
+		for (const imagePath of imagePaths) {
+			try {
+				await fs.unlink(path.join(__dirname, imagePath));
+				console.log(`Successfully deleted old image ${imagePath}`);
+			} catch (err) {
+				if (err.code !== "ENOENT") {
 					console.error(`Error while deleting old image ${imagePath}:`, err);
-				} else {
-					console.log(`Successfully deleted old image ${imagePath}`);
 				}
-			});
-		});
-	});
+			}
+		}
 
-	try {
-		const files = await readdir("uploads/");
-
-		// 筛选出 .xlsx 文件并获取每个文件的 stat 对象
+		const filesInUploads = await fs.readdir("uploads/");
 		const xlsxFiles = await Promise.all(
-			files
+			filesInUploads
 				.filter((file) => path.extname(file).toLowerCase() === ".xlsx")
 				.map(async (file) => {
 					const filePath = path.join("uploads/", file);
-					const stats = await stat(filePath);
+					const stats = await fs.stat(filePath);
 					return { file: filePath, mtime: stats.mtime };
 				})
 		);
 
-		// 如果文件数量超过 15，按照修改时间排序并删除最旧的文件
 		if (xlsxFiles.length > 6) {
 			xlsxFiles
 				.sort((a, b) => a.mtime.getTime() - b.mtime.getTime())
 				.slice(0, xlsxFiles.length - 6)
 				.forEach(async (fileStat) => {
 					try {
-						await unlink(fileStat.file);
+						await fs.unlink(fileStat.file);
 						console.log(`Successfully deleted old file ${fileStat.file}`);
 					} catch (err) {
 						console.error(
@@ -123,26 +115,27 @@ app.post("/upload", upload.single("excelFile"), async (req, res) => {
 	});
 });
 
-app.get("/matlab-output", (req, res) => {
-	fs.readdir(__dirname, (err, files) => {
-		if (err) {
-			console.error(`Error reading directory: ${err}`);
-			res.status(500).send("An error occurred while reading the directory.");
-			return;
-		}
+app.get("/matlab-output", async (req, res) => {
+	try {
+		const files = await fs.readdir(__dirname); // 使用 promises 版本的 readdir
 
 		// 筛选出 .png 文件
 		const imagePaths = files.filter(
 			(file) => path.extname(file).toLowerCase() === ".png"
 		);
 
+		console.log('imagePaths ', imagePaths)
+
 		// 生成 HTML 图像标签
 		const imageTags = imagePaths
-			.map((imagePath) => `<img src="${imagePath}" class="zoomable-image" />`)
+			.map((imagePath) => `<img src="/${imagePath}" class="zoomable-image" />`) // 图片路径必须是完整的 URL 路径
 			.join("");
 
 		res.send(imageTags);
-	});
+	} catch (err) {
+		console.error(`Error reading directory: ${err}`);
+		res.status(500).send("An error occurred while reading the directory.");
+	}
 });
 
 app.listen(3000, () => {
