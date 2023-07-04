@@ -4,8 +4,8 @@ function total(data_file_path1, sheet_name1, range1, data_file_path2, sheet_name
     clc
     % 注意，这里可以对数据先进行描述性统计
     % 描述性统计的内容见第5讲.相关系数
-    % a=xlsread('/Users/cqing/makeMoney/node_matlab/uploads/excelFile-1687801616855.xlsx','Sheet1','A2:Q9999')
-    % b=xlsread('/Users/cqing/makeMoney/node_matlab/uploads/excelFile-1687801616855.xlsx','Sheet2','A2:P9999')
+    % a=xlsread('excelFile-1687801616855.xlsx','Sheet1','A2:Q9999')
+    % b=xlsread('excelFile-1687801616855.xlsx','Sheet2','A2:P9999')
 
     a=xlsread(data_file_path1, sheet_name1, range1)
     b=xlsread(data_file_path1, sheet_name2, range2)
