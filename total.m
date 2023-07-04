@@ -1,4 +1,5 @@
 function total(data_file_path1, sheet_name1, range1, data_file_path2, sheet_name2, range2)
+    rng('shuffle');
     close all
     clc
     % 注意，这里可以对数据先进行描述性统计
@@ -213,13 +214,33 @@ function total(data_file_path1, sheet_name1, range1, data_file_path2, sheet_name
     saveas(gcf, 'error_results.png')
     % 生成图片 - 结束 
 
-    %显示测试集结果
+   %显示测试集结果
     disp(' ')
     disp('测试集结果：')
     disp('    编号     实际值     BP预测值     误差')
     for i=1:len
         disp([i,output_test(i),test_simu(i),error(i)])   % 显示顺序: 样本编号，实际值，预测值，误差
     end
+
+    % 测试集结果图
+    figure;
+    plot(1:len, output_test, 'r', 'LineWidth', 2); % 实际值红色线
+    hold on;
+    plot(1:len, test_simu, 'b', 'LineWidth', 2); % 预测值蓝色线
+    legend('实际值', '预测值');
+    xlabel('样本编号');
+    ylabel('值');
+    title('测试集结果');
+    saveas(gcf, 'test_results.png') % 保存图片
+
+    % 误差分布图
+    figure;
+    histogram(error);
+    xlabel('误差');
+    ylabel('频数');
+    title('误差分布');
+    saveas(gcf, 'error_distribution.png') % 保存图片
+
     %% %%未来预测
     data_test=e'
     %data_test=xlsread('original data1.xlsx','A500:P510')'
@@ -229,6 +250,17 @@ function total(data_file_path1, sheet_name1, range1, data_file_path2, sheet_name
     Sim1=mapminmax('reverse',sim1,outputps);
 
     disp(['预测未来CO2排放量为',num2str(Sim1)]);
-    
-end
+
+    % 如果Sim1是向量，生成预测结果图
+    if length(Sim1) > 1
+        figure;
+        plot(1:length(Sim1), Sim1, 'g', 'LineWidth', 2);
+        xlabel('样本编号');
+        ylabel('预测值');
+        title('预测未来CO2排放量');
+        saveas(gcf, 'future_prediction.png') % 保存图片
+    end
+
+        
+    end
 

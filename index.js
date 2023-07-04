@@ -60,7 +60,9 @@ app.get("/matlab-output", (req, res) => {
     const imagePaths = [
         "bp_comparison.png",
         "bp_error.png",
-        "error_results.png"
+        "error_results.png",
+        "error_distribution.png",
+        "future_prediction.png"
     ];
 
     const imageTags = imagePaths
